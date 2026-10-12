@@ -1,0 +1,282 @@
+# MIKOTOH UI 4.5.1
+
+Biblioteca de interface para o cliente Roblox, com 30 temas, controles reutilizáveis e review de pets em 3D no estilo aprovado no teste V3. O review tem preview fixo no topo, lista de linhas largas, raridades coloridas, renda, escala, peso e mutações.
+
+## Arquivos
+
+| Arquivo | Como usar |
+| --- | --- |
+| `MIKOTOH_UI_4_0.lua` | Biblioteca principal. Coloque na raiz do repositório. Retorna `Library`; a janela é criada por `Library:CreateWindow`. |
+| `EXEMPLO_COMPLETO.lua` | Carrega a biblioteca do GitHub e monta a demonstração completa: 30 temas, 9 pets fictícios, componentes e controles de interface. |
+| `README.md` | Guia de instalação e uso. |
+
+A versão interna é **4.5.1**. O nome do arquivo continua `MIKOTOH_UI_4_0.lua` para preservar os endereços usados pelos scripts existentes.
+
+## Instalação no seu GitHub
+
+1. Abra `discordtiktok76-ctrl/MIKOTO-LIBRARY-UI`, na branch `main`.
+2. Envie os três arquivos à raiz do repositório. Substitua o `MIKOTOH_UI_4_0.lua` anterior pelo arquivo deste pacote e confirme a alteração.
+3. Depois que a atualização estiver publicada, execute `EXEMPLO_COMPLETO.lua` inteiro no executor para conferir o carregamento pelo GitHub.
+
+O exemplo aponta para:
+
+```text
+https://raw.githubusercontent.com/discordtiktok76-ctrl/MIKOTO-LIBRARY-UI/refs/heads/main/MIKOTOH_UI_4_0.lua
+```
+
+Se você mudar a pasta, a branch, o usuário ou o nome do repositório, ajuste a URL no carregador. O executor precisa oferecer `loadstring`, `game:HttpGet` e acesso à interface do cliente por `gethui()` ou `CoreGui`. A biblioteca é Luau para o cliente Roblox; não é uma página web.
+
+## Começar uma interface própria
+
+```lua
+local Library = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/discordtiktok76-ctrl/MIKOTO-LIBRARY-UI/refs/heads/main/MIKOTOH_UI_4_0.lua"
+))()
+
+local window = Library:CreateWindow({
+    Name = "Minha interface",
+    DefaultTab = "Principal",
+    Theme = "Original",
+})
+
+local section = window:GetDefaultTab():CreateSection({
+    Name = "Controles", Expanded = true,
+})
+
+section:CreateToggle({
+    Name = "Ativar função", Default = false,
+    Callback = function(value)
+        print("Ativada:", value)
+        -- Coloque aqui a lógica da sua função.
+    end,
+})
+
+section:CreateButton({
+    Name = "Meu botão", ButtonText = "Executar",
+    Callback = function() print("Botão pressionado") end,
+})
+
+window:Finalize()
+```
+
+Uma instância de `Library` gerencia uma janela por vez. Uma nova chamada a `CreateWindow` destrói sua janela anterior. Nomes de abas precisam ser únicos na janela; nomes de seções, únicos na aba; nomes de controles, únicos na seção. `DisplayName` muda o texto exibido sem mudar o nome interno.
+
+## Abas, seções e janela
+
+```lua
+local petsTab = window:CreateTab({Name="Pets"})
+local petsSection = petsTab:CreateSection({Name="Review", Expanded=true})
+local infoTab = window:CreateTab({Name="Informações", Side="Right"})
+
+window:SelectTab("Pets")
+window:Open()
+window:Close()
+window:ToggleVisible()
+window:SetVisible(true)
+window:IsOpen()
+
+petsSection:SetExpanded(false, false) -- segundo argumento: animar
+petsSection:Toggle()
+-- window:Destroy() -- fecha e limpa a interface
+```
+
+A aba inicial não pode ser destruída individualmente. As outras abas e seções oferecem `Destroy()`. Controles também podem ser criados diretamente na aba ou na janela; nesse caso, a biblioteca cria uma seção para eles.
+
+## Todos os 30 temas
+
+```text
+Original, Dark, Rose, Roxo, Verde, VermelhoEscuro, Azul, Preto,
+Lilas, Dourado, Ciano, Laranja, Turquesa, Magenta, Prata, Ambar,
+Marinho, Menta, Coral, Safira, Esmeralda, Lavanda, Carmim, Lima,
+Cobre, Gelo, Grafite, Violeta, RosaNeon, Oceano
+```
+
+```lua
+window:SetTheme("Oceano")
+window:SetTheme("Original")
+
+section:CreateDropdown({
+    Name="Tema", Options=Library:GetThemes(), Default="Original",
+    Callback=function(name) window:SetTheme(name) end,
+})
+```
+
+`Library:GetThemes()` e `window:GetThemes()` devolvem a lista de nomes. `SetTheme` muda as cores da interface. O exemplo completo também oferece um botão para cada tema na aba Cores.
+
+Para cores próprias:
+
+```lua
+window:SetComponentColor(window.Main, "#121826", {Property="BackgroundColor3"})
+window:ResetComponentColor(window.Main)
+window:SetTextColor("#FFE066")
+window:ResetTextStyle()
+-- meuToggle:SetTextColor("#7CF5AB")
+-- meuToggle:ResetTextColor()
+```
+
+As cores podem ser `Color3`, `ColorSequence`, hexadecimal ou uma lista de cores. Personalizações individuais permanecem ao trocar de tema até serem restauradas pelos métodos correspondentes.
+
+## Review de pets em 3D
+
+A biblioteca recebe os modelos e os dados por `Items`. Ela clona os modelos para o preview e preserva os objetos originais. O código que usa a biblioteca escolhe de onde vêm os pets e quando atualizar a lista. Os nove pets fictícios pertencem ao arquivo de exemplo, não ao arquivo principal da biblioteca.
+
+Este exemplo procura uma pasta de modelos. Troque `PetModels` pelo caminho real do seu jogo:
+
+```lua
+local replicated = game:GetService("ReplicatedStorage")
+local pasta = replicated:FindFirstChild("PetModels") -- ajuste este caminho
+local pets = {}
+
+if pasta then
+    for _,modelo in ipairs(pasta:GetChildren()) do
+        if modelo:IsA("Model") or modelo:IsA("BasePart") then
+            table.insert(pets, {
+                Id = modelo.Name,
+                Name = modelo.Name,
+                Model = modelo,
+                Rarity = "Common",
+                Details = "Preview do modelo",
+            })
+        end
+    end
+end
+
+local gallery = petsSection:CreatePetGallery({
+    Name = "Pets 3D", Title = "Pet Review",
+    Items = pets, PageSize = 12, Sort = "Value",
+    Spin = true, PreviewCard = true, GroupByStatus = true,
+    OnSelect = function(item, handle)
+        print("Pet selecionado:", item.Id, item.Name)
+    end,
+    OnError = function(message, handle)
+        warn("Erro no preview 3D:", message)
+    end,
+})
+```
+
+Se a pasta não existir, a lista ficará vazia. A galeria não descobre automaticamente as pastas ou os módulos particulares de cada jogo. Use a demonstração completa para ver os nove modelos fictícios funcionando sem precisar localizar modelos do jogo.
+
+Cada item aceita:
+
+| Campo | Tipo e função |
+| --- | --- |
+| `Id` | Identificador único do pet. Pode ser string ou número; é convertido para string. |
+| `Name` | Nome mostrado. `DisplayName` também é aceito. |
+| `Model` | Referência a um `Model` ou `BasePart`. `Template` é um alias. |
+| `Icon` | Imagem alternativa quando não houver modelo 3D. |
+| `Rarity` | Texto da raridade. `Secret` e `Secreto` recebem o gradiente metálico. |
+| `RarityNumber` | Número usado para ordenar por raridade. |
+| `Accent` | Cor da raridade e do contorno. Aceita `Color3` ou hexadecimal. `Color` também é aceito. |
+| `RarityGradient` | `ColorSequence` ou `UIGradient` para a raridade. |
+| `Value` | Número para ordenar por valor. |
+| `Income` | Renda por segundo exibida em verde. `IncomePerSecond` também é aceito; sem renda explícita, usa `Value`. |
+| `Scale` | Número mostrado como multiplicador, por exemplo `1.25x`. |
+| `Weight` | Peso numérico em Kg. `WeightKg` também é aceito. |
+| `Mutations` | Lista de nomes, por exemplo `{"Golden", "Rainbow"}`. |
+| `Equipped` | `true` agrupa o pet em EQUIPPED. |
+| `Group` | Grupo explícito. Grupos reconhecidos: `Equipped`, `Ready`, `Growing`, `Inventory`. |
+| `Status` | Texto de estado mostrado na linha. |
+| `Details` | Descrição ou dica. `Description` também é aceito. |
+
+Para atualizar e controlar a galeria:
+
+```lua
+gallery:SetItems(pets)
+gallery:AddItem({Id="novo", Name="Novo pet", Model=meuModelo}) -- forneça um modelo válido
+gallery:RemoveItem("novo")
+gallery:Select("id_do_pet")
+gallery:GetSelected()
+gallery:GetItems()
+gallery:SetSort("Rarity") -- Value, Rarity ou Name
+gallery:GetSortModes()
+gallery:SetSearchQuery("rainbow")
+gallery:SetSearchQuery("")
+gallery:SetPageSize(6) -- de 1 a 24
+gallery:SetPage(2)
+gallery:GetPageCount()
+gallery:SetSpin(false)
+gallery:SetPreviewVisible(false)
+gallery:Refresh()
+-- gallery:Clear()
+-- gallery:Destroy()
+```
+
+`Select` limpa a busca se necessário para revelar o pet escolhido e seleciona sua página. `SetItems` mantém a seleção por ID quando o item ainda existe. `Refresh` reaplica os dados já fornecidos e permite tentar montar novamente um modelo que falhou; para buscar novos dados do jogo, obtenha a nova lista e chame `SetItems`.
+
+O preview permanece fixo no topo enquanto a lista rola. A página padrão contém até 12 pets. `PreviewCard=false` oculta o preview superior; `GroupByStatus=false` remove o agrupamento por estado. `Style` permite ajustar opções do Canvas, como `MaxLines`. O review usa linhas de largura inteira; o antigo parâmetro `Columns` não controla mais seu layout.
+
+`CreatePetReview3D` e `CreatePetReview` são aliases de `CreatePetGallery`, disponíveis na seção, aba e janela. O método antigo `CreateReviewPanel` continua apontando para o painel de ovos; use os métodos de pets para o review 3D.
+
+## Outros controles
+
+```lua
+local status = section:CreateText({Name="Status", Text="Pronto"})
+local toggle = section:CreateToggle({Name="Ativar", Default=false})
+local slider = section:CreateSlider({Name="Valor", Min=0, Max=100, Default=25, Increment=1})
+local input = section:CreateInput({Name="Texto", Default="", Placeholder="Digite aqui"})
+local lista = section:CreateDropdown({Name="Escolha", Options={"A","B","C"}, Default="A"})
+local multi = section:CreateMultiDropdown({Name="Várias escolhas", Options={"A","B","C"}, Default={"A"}})
+local nivel = section:CreateTextSlider({Name="Nível", Values={"Baixo","Médio","Alto"}, Default="Médio"})
+local paragrafo = section:CreateParagraph({Name="Descrição", Title="Informações", Text="Meu texto"})
+
+toggle:Get()
+toggle:Set(true) -- chama o callback
+toggle:Set(false, false) -- atualiza sem chamar o callback do usuário
+status:Set("Atualizado", false)
+slider:SetRange(0, 200)
+input:Set("Novo texto", false)
+lista:Set("B", false)
+multi:Set({"A","C"}, false)
+nivel:Set("Alto", false)
+```
+
+Os controles aceitam `Callback` para receber alterações e `Note` para uma observação. `ShowWhen=toggle` mostra um controle quando esse toggle estiver ativo. `State` permite compartilhar um estado criado por `window:CreateState({Name="Meu estado", Default=false})`. `toggle:GetState()` devolve seu estado.
+
+`CreateActionDropdown` e `CreateMultiActionDropdown` chamam o callback ao aplicar a seleção. Use `ButtonText` para o texto do botão e `Hint` para uma dica. `CreateLabel` é um alias de `CreateText`, `CreateSwitch` de `CreateToggle` e `CreateNamedSlider` de `CreateTextSlider`.
+
+## Canvas e elementos próprios
+
+```lua
+section:CreateCanvas({
+    Name="Meu Canvas", Layout="free", Style={MinLines=5, MaxLines=10},
+    Build=function(surface)
+        local text = surface:Text({Text="Olá", X=0, Y=0, Width=10, Height=1})
+        surface:Bar({Alpha=0.65, X=0, Y=2, Width=10, Height=0.3})
+        surface:SetContentLines(5)
+        text.Set({Text="Atualizado"})
+    end,
+})
+```
+
+`surface:Frame`, `Text`, `Button`, `Image`, `Model` e `Bar` criam elementos. `X`, `Y`, `Width` e `Height` usam unidades do Canvas; `WidthScale` e `HeightScale` usam proporções. `surface:OnResize(function(api,width,unit) ... end)` reage ao tamanho disponível.
+
+Métodos da Surface usam dois-pontos. Métodos dos elementos retornados usam ponto: `element.Set({...})`, `element.Get()`, `element.Destroy()`. Modelos oferecem `model.SetModel(template)`, `model.SetSpin(false)` e `model.GetModelStatus()`. Para imagens e modelos, forneça os objetos ou IDs que você possui.
+
+## Painéis opcionais e botão de abrir
+
+```lua
+local guard = section:CreateAntiGuardPanel({
+    Name="Anti Guard Panel", Default=false, Value=false,
+    Callback=function(value) print("Anti Guard:", value) end,
+})
+
+window:SetOpenButton({
+    Mode="Free", ImageId=131620572368699, Size=36,
+    BorderColor="#000000", BorderThickness=1,
+})
+-- window:SetOpenButton({Mode="Original"})
+```
+
+`CreateEggPanel`, `CreateStealPanel` e `CreateItemPanel` criam o painel de ovos. Esse painel procura a interface nativa em `PlayerGui.ActivePets.Frame` ou recebe um `Template` compatível. Se o modelo nativo estiver ausente, o handle guarda os dados e aguarda sua criação; `IsReady()` informa quando o painel foi montado. O review de pets em 3D funciona sem esse modelo nativo.
+
+Os botões dos painéis chamam os callbacks que seu script fornecer. A biblioteca cria a interface e seus estados; suas funções de jogo são implementadas pelo script que usa a biblioteca.
+
+## Conferir a atualização
+
+```lua
+print(Library.Version) -- 4.5.1 neste pacote
+```
+
+Se o exemplo mostrar a versão antiga ou falhar no carregamento, confira o arquivo publicado na URL Raw e se a alteração já foi confirmada na branch `main`. Publique o conteúdo de `MIKOTOH_UI_4_0.lua` como biblioteca; `EXEMPLO_COMPLETO.lua` é a demonstração que usa essa biblioteca.
+
+Esta entrega contém a mesma biblioteca embutida no teste completo V3 que você aprovou. A sintaxe Luau, a lógica do review e a integridade do pacote foram verificadas.
